@@ -12,15 +12,10 @@ class TSL2561:
         CMD_REG_DATA0 = 0x8C
         CMD_REG_DATA1 = 0x8E
 
-
-	def __init__(self):
-		if not (PyBCM2835.init()):
-                        raise EnvironmentError("Cannot initialize BCM2835.")
-                PyBCM2835.i2c_begin()
+	def __init__(self):		
 		self.gain = 0 # no gain preselected
 		self.debug=0
 		self.pause=0.8
-		PyBCM2835.i2c_write(chr(0x80)+chr(0x03),2) # enable the device
 	def setSlaveAddress(self):
 		try :
 		    function_call = inspect.stack()[1][4][0].strip()
@@ -35,12 +30,18 @@ class TSL2561:
 		    return
 
 		# This is the real Function, only accessible inside class #
+		if not (PyBCM2835.init()):
+                        raise EnvironmentError("Cannot initialize BCM2835.")
+		self.gain = 0 # no gain preselected
+		self.debug=0
+		self.pause=0.8
 	        PyBCM2835.i2c_begin()
                 PyBCM2835.i2c_setSlaveAddress(self.ADDRESS)
+		PyBCM2835.i2c_write(chr(0x80)+chr(0x03),2) # enable the device
+
 	def setGain(self,gain=1):
 		""" Set the gain """
 		if (gain != self.gain):
-			self.setSlaveAddress()
 			if (gain==1):
 				PyBCM2835.i2c_write(chr(0x81)+chr(0x02),2)
 				if (self.debug):
@@ -66,7 +67,6 @@ class TSL2561:
 
 		# This is the real Function, only accessible inside class #
 		try:
-			self.setSlaveAddress()
 	                data=""+chr(0)+chr(0)
 	                PyBCM2835.i2c_read_register_rs(chr(reg),data,2)
 			newval=(ord(data[1])<<8)|ord(data[0])
@@ -81,6 +81,7 @@ class TSL2561:
 	def readIR(self, reg=CMD_REG_DATA1):
 		return self.readWord(reg);
 	def readLux(self, gain = 0):
+		self.setSlaveAddress()
 		if (gain == 1 or gain == 16):
 			self.setGain(gain) # low/highGain
 			ambient = self.readFull()
@@ -114,4 +115,5 @@ class TSL2561:
 			lux = (0.00338 * ambient) - (0.0026 * IR)
 		elif (ratio > 1.3):
 			lux = 0
+		PyBCM2835.i2c_write(chr(0x80)+chr(0x00),2) # power-down the device
 		return lux
